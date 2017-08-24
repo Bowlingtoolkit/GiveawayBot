@@ -56,6 +56,7 @@ public class Giveaway {
     public static void getWinners(Message message, Consumer<List<User>> success, Runnable failure) {
         try {
             MessageReaction mr = message.getReactions().stream().filter(r -> r.getEmote().getName().equals(GiveawayBot.TADA)).findAny().orElse(null);
+            //noinspection ConstantConditions
             mr.getUsers(100).queue(u -> {
                 List<User> users = new LinkedList<>();
                 users.addAll(u);
@@ -131,29 +132,27 @@ public class Giveaway {
         if (prize != null)
             eb.setAuthor(prize, null, null);
         try {
-            message.getChannel().getMessageById(message.getIdLong()).queue(m -> {
-                Giveaway.getWinners(m, wins -> {
-                    String str = wins.get(0).getAsMention();
-                    if (wins.size() == 1) {
-                        eb.setDescription("Winner: " + wins.get(0).getAsMention());
-                    } else {
-                        eb.setDescription("Winners:");
-                        wins.forEach(w -> eb.appendDescription("\n").appendDescription(w.getAsMention()));
-                        for (int i = 1; i < wins.size(); i++)
-                            str += ", " + wins.get(i).getAsMention();
-                    }
-                    mb.setEmbed(eb.build());
-                    m.editMessage(mb.build()).queue();
-                    m.getChannel().sendMessage("Congratulations " + str + "! You won" + (prize == null ? "" : " the **" + prize + "**") + "!").queue();
-                }, () -> {
-                    eb.setDescription("Could not determine a winner!");
-                    mb.setEmbed(eb.build());
-                    m.editMessage(mb.build()).queue();
-                    m.getChannel().sendMessage("A winner could not be determined!").queue();
-                });
-            }, v -> {
+            message.getChannel().getMessageById(message.getIdLong()).queue(m -> Giveaway.getWinners(m, wins -> {
+                StringBuilder str = new StringBuilder(wins.get(0).getAsMention());
+                if (wins.size() == 1) {
+                    eb.setDescription("Winner: " + wins.get(0).getAsMention());
+                } else {
+                    eb.setDescription("Winners:");
+                    wins.forEach(w -> eb.appendDescription("\n").appendDescription(w.getAsMention()));
+                    for (int i = 1; i < wins.size(); i++)
+                        str.append(", ").append(wins.get(i).getAsMention());
+                }
+                mb.setEmbed(eb.build());
+                m.editMessage(mb.build()).queue();
+                m.getChannel().sendMessage("Congratulations " + str + "! You won" + (prize == null ? "" : " the **" + prize + "**") + "!").queue();
+            }, () -> {
+                eb.setDescription("Could not determine a winner!");
+                mb.setEmbed(eb.build());
+                m.editMessage(mb.build()).queue();
+                m.getChannel().sendMessage("A winner could not be determined!").queue();
+            }), v -> {
             });
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 
@@ -184,16 +183,14 @@ public class Giveaway {
             } else {
                 try {
                     message.delete().queue();
-                } catch (PermissionException e) {
+                } catch (PermissionException ignored) {
                 }
                 message.getChannel().sendMessage(mb.build()).queue(m -> {
                     message = m;
                     message.addReaction(GiveawayBot.TADA).queue();
-                }, f -> {
-                    message = null;
-                });
+                }, f -> message = null);
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 

@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 /**
  * @author jagrosh
  */
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class FinderUtil {
 
     public final static String USER_MENTION = "<@!?(\\d{17,20})>";
@@ -35,11 +36,11 @@ public class FinderUtil {
 
     public static List<User> findUsers(String query, JDA jda) {
         String id;
-        String discrim = null;
+        String discriminator = null;
         if (query.matches(USER_MENTION)) {
             id = query.replaceAll(USER_MENTION, "$1");
             if (id.equals("1")) {
-                UserImpl clyde = new UserImpl(1l, (JDAImpl) jda);
+                UserImpl clyde = new UserImpl(1L, (JDAImpl) jda);
                 clyde.setDiscriminator("0000");
                 clyde.setBot(true);
                 clyde.setName("Clyde");
@@ -54,7 +55,7 @@ public class FinderUtil {
             if (u != null)
                 return Collections.singletonList(u);
         } else if (query.matches("^.*#\\d{4}$")) {
-            discrim = query.substring(query.length() - 4);
+            discriminator = query.substring(query.length() - 4);
             query = query.substring(0, query.length() - 5).trim();
         }
         ArrayList<User> exact = new ArrayList<>();
@@ -63,7 +64,7 @@ public class FinderUtil {
         ArrayList<User> contains = new ArrayList<>();
         String lowerQuery = query.toLowerCase();
         for (User u : jda.getUsers()) {
-            if (discrim != null && !u.getDiscriminator().equals(discrim))
+            if (discriminator != null && !u.getDiscriminator().equals(discriminator))
                 continue;
             if (u.getName().equals(query))
                 exact.add(u);
@@ -84,7 +85,7 @@ public class FinderUtil {
     }
 
     public static List<User> findUsers(String query, Guild guild) {
-        return findMembers(query, guild).stream().map(m -> m.getUser()).collect(Collectors.toList());
+        return findMembers(query, guild).stream().map(Member::getUser).collect(Collectors.toList());
     }
 
     public static List<Member> findMembers(String query, Guild guild) {
@@ -201,26 +202,26 @@ public class FinderUtil {
                 return Collections.singletonList(tc);
         }
         ArrayList<TextChannel> exact = new ArrayList<>();
-        ArrayList<TextChannel> wrongcase = new ArrayList<>();
-        ArrayList<TextChannel> startswith = new ArrayList<>();
+        ArrayList<TextChannel> wrongCase = new ArrayList<>();
+        ArrayList<TextChannel> startsWith = new ArrayList<>();
         ArrayList<TextChannel> contains = new ArrayList<>();
-        String lowerquery = query.toLowerCase();
-        guild.getTextChannels().stream().forEach((tc) -> {
-            if (tc.getName().equals(lowerquery))
+        String lowerQuery = query.toLowerCase();
+        guild.getTextChannels().forEach((tc) -> {
+            if (tc.getName().equals(lowerQuery))
                 exact.add(tc);
-            else if (tc.getName().equalsIgnoreCase(lowerquery) && exact.isEmpty())
-                wrongcase.add(tc);
-            else if (tc.getName().toLowerCase().startsWith(lowerquery) && wrongcase.isEmpty())
-                startswith.add(tc);
-            else if (tc.getName().toLowerCase().contains(lowerquery) && startswith.isEmpty())
+            else if (tc.getName().equalsIgnoreCase(lowerQuery) && exact.isEmpty())
+                wrongCase.add(tc);
+            else if (tc.getName().toLowerCase().startsWith(lowerQuery) && wrongCase.isEmpty())
+                startsWith.add(tc);
+            else if (tc.getName().toLowerCase().contains(lowerQuery) && startsWith.isEmpty())
                 contains.add(tc);
         });
         if (!exact.isEmpty())
             return exact;
-        if (!wrongcase.isEmpty())
-            return wrongcase;
-        if (!startswith.isEmpty())
-            return startswith;
+        if (!wrongCase.isEmpty())
+            return wrongCase;
+        if (!startsWith.isEmpty())
+            return startsWith;
         return contains;
     }
 
@@ -238,26 +239,26 @@ public class FinderUtil {
                 return Collections.singletonList(vc);
         }
         ArrayList<VoiceChannel> exact = new ArrayList<>();
-        ArrayList<VoiceChannel> wrongcase = new ArrayList<>();
-        ArrayList<VoiceChannel> startswith = new ArrayList<>();
+        ArrayList<VoiceChannel> wrongCase = new ArrayList<>();
+        ArrayList<VoiceChannel> startsWith = new ArrayList<>();
         ArrayList<VoiceChannel> contains = new ArrayList<>();
-        String lowerquery = query.toLowerCase();
-        guild.getVoiceChannels().stream().forEach((vc) -> {
-            if (vc.getName().equals(lowerquery))
+        String lowerQuery = query.toLowerCase();
+        guild.getVoiceChannels().forEach((vc) -> {
+            if (vc.getName().equals(lowerQuery))
                 exact.add(vc);
-            else if (vc.getName().equalsIgnoreCase(lowerquery) && exact.isEmpty())
-                wrongcase.add(vc);
-            else if (vc.getName().toLowerCase().startsWith(lowerquery) && wrongcase.isEmpty())
-                startswith.add(vc);
-            else if (vc.getName().toLowerCase().contains(lowerquery) && startswith.isEmpty())
+            else if (vc.getName().equalsIgnoreCase(lowerQuery) && exact.isEmpty())
+                wrongCase.add(vc);
+            else if (vc.getName().toLowerCase().startsWith(lowerQuery) && wrongCase.isEmpty())
+                startsWith.add(vc);
+            else if (vc.getName().toLowerCase().contains(lowerQuery) && startsWith.isEmpty())
                 contains.add(vc);
         });
         if (!exact.isEmpty())
             return exact;
-        if (!wrongcase.isEmpty())
-            return wrongcase;
-        if (!startswith.isEmpty())
-            return startswith;
+        if (!wrongCase.isEmpty())
+            return wrongCase;
+        if (!startsWith.isEmpty())
+            return startsWith;
         return contains;
     }
 
@@ -285,7 +286,7 @@ public class FinderUtil {
         ArrayList<Role> startswith = new ArrayList<>();
         ArrayList<Role> contains = new ArrayList<>();
         String lowerQuery = query.toLowerCase();
-        guild.getRoles().stream().forEach((role) -> {
+        guild.getRoles().forEach((role) -> {
             if (role.getName().equals(query))
                 exact.add(role);
             else if (role.getName().equalsIgnoreCase(query) && exact.isEmpty())
@@ -322,7 +323,7 @@ public class FinderUtil {
         ArrayList<Guild> startswith = new ArrayList<>();
         ArrayList<Guild> contains = new ArrayList<>();
         String lowerQuery = query.toLowerCase();
-        jda.getGuilds().stream().forEach((guild) -> {
+        jda.getGuilds().forEach((guild) -> {
             if (guild.getName().equals(query))
                 exact.add(guild);
             else if (guild.getName().equalsIgnoreCase(query) && exact.isEmpty())

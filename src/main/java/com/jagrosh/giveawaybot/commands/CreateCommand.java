@@ -164,7 +164,7 @@ public class CreateCommand extends Command {
                                 tchan.sendMessage(GiveawayBot.YAY + "   **GIVEAWAY**   " + GiveawayBot.YAY).queue(m -> {
                                             try {
                                                 m.addReaction(GiveawayBot.TADA).queue();
-                                            } catch (Exception ex) {
+                                            } catch (Exception ignored) {
                                             }
                                             event.replySuccess("Done! The giveaway for the `" + e.getMessage().getRawContent() + "` is starting in " + tchan.getAsMention() + "!");
                                             new Giveaway(bot, OffsetDateTime.now().plusSeconds(seconds), m, prize, winners).start();
