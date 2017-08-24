@@ -76,14 +76,14 @@ public class GiveawayBot {
     });
     // list of all logins the bot has
     private final List<JDA> shards;
-    // threadpool to use for timings
-    private final ScheduledExecutorService threadpool;
+    // threadPool to use for timings
+    private final ScheduledExecutorService threadPool;
     // all current giveaways
     private final Set<Giveaway> giveaways;
 
     public GiveawayBot() {
         shards = new LinkedList<>();
-        threadpool = Executors.newScheduledThreadPool(20);
+        threadPool = Executors.newScheduledThreadPool(20);
         giveaways = new HashSet<>();
     }
 
@@ -217,7 +217,7 @@ public class GiveawayBot {
     // public getters
     @SuppressWarnings("WeakerAccess")
     public ScheduledExecutorService getThreadPool() {
-        return threadpool;
+        return threadPool;
     }
 
     public Set<Giveaway> getGiveaways() {
@@ -241,7 +241,7 @@ public class GiveawayBot {
     }
 
     public void shutdown() {
-        threadpool.shutdown();
+        threadPool.shutdown();
         save();
         shards.forEach(JDA::shutdown);
     }
