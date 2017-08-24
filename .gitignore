@@ -329,3 +329,4 @@ gradle-app.setting
 ## Config files
 #################
 *.json
+*.txt
