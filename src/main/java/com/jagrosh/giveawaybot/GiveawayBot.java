@@ -29,24 +29,23 @@ import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.exceptions.RateLimitedException;
 import net.dv8tion.jda.core.utils.SimpleLog;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * This bot is designed to simplify giveaways. It is very easy to start a timed
@@ -63,6 +62,7 @@ public class GiveawayBot {
     public static final Color BLURPLE = Color.decode("#7289DA");
     public static final String INVITE = "https://discordapp.com/oauth2/authorize?permissions=347200&scope=bot&client_id=294882584201003009";
     private static final String FILENAME = "giveaways_restart.txt";
+    private static final Path configFile = Paths.get("config.json");
     // Giveaway category
     public static Category GIVEAWAY = new Category("Giveaway", event -> {
         if (event.getGuild() == null) {
@@ -91,18 +91,28 @@ public class GiveawayBot {
      * Main execution
      *
      * @param args - number of shards to start with
-     * @throws IOException
-     * @throws LoginException
-     * @throws IllegalArgumentException
-     * @throws RateLimitedException
+     * @throws IOException              If one of the file read fails.
+     * @throws LoginException           If the bot fails to login.
+     * @throws IllegalArgumentException If one of the arguments used is invalid.
+     * @throws RateLimitedException     If you have been rate limited and can't start the bot.
+     * @throws JSONException            If there is a syntax error in the config file or a duplicated key.
      */
-    public static void main(String[] args) throws IOException, LoginException, IllegalArgumentException, RateLimitedException, InterruptedException {
+    public static void main(String[] args) throws IOException, LoginException, IllegalArgumentException, RateLimitedException, InterruptedException, JSONException {
+        //Load config file
+        JSONObject config;
+        {
+            List<String> configLines = Files.readAllLines(configFile);
+            StringBuilder configContent = new StringBuilder();
+            configLines.forEach(configContent::append);
+            config = new JSONObject(configContent.toString());
+        }
 
         // determine the number of shards
         int shards = args.length == 0 ? 1 : Integer.parseInt(args[0]);
 
         // load tokens from a file
-        List<String> tokens = Files.readAllLines(Paths.get("config.txt"));
+        List<String> tokens = new ArrayList<>();
+        config.getJSONArray("tokens").forEach(o -> tokens.add(o.toString()));
 
         // instantiate a bot
         GiveawayBot bot = new GiveawayBot();
@@ -111,13 +121,14 @@ public class GiveawayBot {
         EventWaiter waiter = new EventWaiter();
 
         // build the client to deal with commands
+        String prefix = config.has("prefix") ? config.getString("prefix") : "!g";
         CommandClient client = new CommandClientBuilder()
-                .setPrefix("!g")
-                .setOwnerId("113156185389092864")
-                .setGame(Game.of("giveawaybot.party | !ghelp"))
+                .setPrefix(prefix)
+                .setOwnerId(config.has("ownerId") ? config.getString("ownerId") : null)
+                .setGame(Game.of("giveawaybot.party | " + prefix))
                 .setEmojis(TADA, "\uD83D\uDCA5", "\uD83D\uDCA5")
                 //.setServerInvite("https://discordapp.com/invite/0p9LSGoRLu6Pet0k")
-                .setHelpFunction(event -> FormatUtil.formatHelp(event))
+                .setHelpFunction(FormatUtil::formatHelp)
                 .setDiscordBotsKey(tokens.get(1))
                 .addCommands(
                         new AboutCommand(bot),
@@ -132,8 +143,6 @@ public class GiveawayBot {
                         new EvalCommand(bot),
                         new ShutdownCommand(bot)
                 ).build();
-
-        Logger.getLogger("org.apache.http.client.protocol.ResponseProcessCookies").setLevel(Level.OFF);
 
         for (int i = 0; i < shards; i++) {
             JDABuilder builder = new JDABuilder(AccountType.BOT)
@@ -150,7 +159,7 @@ public class GiveawayBot {
 
         try {
             Files.readAllLines(Paths.get(FILENAME), Charset.forName("ISO-8859-1")).forEach(str -> {
-                String[] parts = str.split("  ", 5);
+                String[] parts = str.split(" {2}", 5);
                 try {
                     Message m = bot.getTextChannelById(parts[0]).getMessageById(parts[1]).complete();
                     OffsetDateTime end = OffsetDateTime.parse(parts[2]);
@@ -161,9 +170,7 @@ public class GiveawayBot {
                         prize = parts.length < 5 ? null : parts[4];
                     } catch (ArrayIndexOutOfBoundsException | NumberFormatException ex) {
                         wins = 1;
-                        if (parts.length < 4)
-                            prize = null;
-                        else if (parts.length < 5)
+                        if (parts.length < 5)
                             prize = parts[3];
                         else
                             prize = parts[3] + "  " + parts[4];
@@ -179,7 +186,7 @@ public class GiveawayBot {
             SimpleLog.getLog("Loading").fatal(e);
         }
         long[] second = {0L};
-        bot.getThreadpool().scheduleWithFixedDelay(() -> {
+        bot.getThreadPool().scheduleWithFixedDelay(() -> {
             try {
                 OffsetDateTime now = OffsetDateTime.now();
                 List<Giveaway> ends = new LinkedList<>();
@@ -192,14 +199,14 @@ public class GiveawayBot {
                         }
                     }
                 }
-                ends.forEach(gi -> gi.end());
+                ends.forEach(Giveaway::end);
                 second[0]++;
             } catch (Exception e) {
                 SimpleLog.getLog("Counter").warn(e);
             }
         }, 0, 1, TimeUnit.SECONDS);
 
-        bot.getThreadpool().scheduleWithFixedDelay(() -> bot.save(), 5, 5, TimeUnit.MINUTES);
+        bot.getThreadPool().scheduleWithFixedDelay(bot::save, 5, 5, TimeUnit.MINUTES);
     }
 
     // private methods
@@ -208,7 +215,8 @@ public class GiveawayBot {
     }
 
     // public getters
-    public ScheduledExecutorService getThreadpool() {
+    @SuppressWarnings("WeakerAccess")
+    public ScheduledExecutorService getThreadPool() {
         return threadpool;
     }
 
@@ -222,6 +230,7 @@ public class GiveawayBot {
         return shards;
     }
 
+    @SuppressWarnings("WeakerAccess")
     public TextChannel getTextChannelById(String id) {
         for (JDA shard : shards) {
             TextChannel tc = shard.getTextChannelById(id);
@@ -234,15 +243,13 @@ public class GiveawayBot {
     public void shutdown() {
         threadpool.shutdown();
         save();
-        shards.forEach(jda -> jda.shutdown());
+        shards.forEach(JDA::shutdown);
     }
 
     private void save() {
         StringBuilder builder = new StringBuilder();
-        giveaways.forEach(g -> {
-            builder.append(g.getMessage().getChannel().getId()).append("  ").append(g.getMessage().getId()).append("  ")
-                    .append(g.getEnd().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)).append("  ").append(g.getWinners()).append("  ").append(g.getPrize() == null ? "null" : g.getPrize().replace("\n", " ").replace("\r", "")).append("\n");
-        });
+        giveaways.forEach(g -> builder.append(g.getMessage().getChannel().getId()).append("  ").append(g.getMessage().getId()).append("  ")
+                .append(g.getEnd().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)).append("  ").append(g.getWinners()).append("  ").append(g.getPrize() == null ? "null" : g.getPrize().replace("\n", " ").replace("\r", "")).append("\n"));
         try {
             Files.write(Paths.get(FILENAME), builder.toString().trim().getBytes());
         } catch (Exception e) {
