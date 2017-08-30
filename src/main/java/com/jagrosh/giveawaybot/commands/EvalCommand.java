@@ -15,7 +15,7 @@
  */
 package com.jagrosh.giveawaybot.commands;
 
-import com.jagrosh.giveawaybot.GiveawayBot;
+import com.jagrosh.giveawaybot.Bot;
 import com.jagrosh.jdautilities.commandclient.Command;
 import com.jagrosh.jdautilities.commandclient.CommandEvent;
 
@@ -27,9 +27,9 @@ import javax.script.ScriptEngineManager;
  */
 public class EvalCommand extends Command {
 
-    private final GiveawayBot bot;
+    private final Bot bot;
 
-    public EvalCommand(GiveawayBot bot) {
+    public EvalCommand(Bot bot) {
         this.bot = bot;
         name = "eval";
         help = "evaluates Nashorn code";

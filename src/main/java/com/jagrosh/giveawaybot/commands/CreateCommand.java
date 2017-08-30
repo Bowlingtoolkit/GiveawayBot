@@ -15,18 +15,17 @@
  */
 package com.jagrosh.giveawaybot.commands;
 
-import com.jagrosh.giveawaybot.GiveawayBot;
-import com.jagrosh.giveawaybot.entities.Giveaway;
+import com.jagrosh.giveawaybot.Bot;
+import com.jagrosh.giveawaybot.Constants;
 import com.jagrosh.giveawaybot.util.FinderUtil;
 import com.jagrosh.giveawaybot.util.FormatUtil;
 import com.jagrosh.jdautilities.commandclient.Command;
 import com.jagrosh.jdautilities.commandclient.CommandEvent;
 import com.jagrosh.jdautilities.waiter.EventWaiter;
-import net.dv8tion.jda.core.Permission;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -40,15 +39,15 @@ public class CreateCommand extends Command {
     private final static String TIME = "\n\n`Please enter the duration of the giveaway in seconds.`\n`Alternatively, enter a duration in minutes and include an M at the end.`";
     private final static String WINNERS = "\n\n`Please enter a number of winners between 1 and 15.`";
     private final static String PRIZE = "\n\n`Please enter the giveaway prize. This will also begin the giveaway.`";
-    private final GiveawayBot bot;
+    private final Bot bot;
     private final EventWaiter waiter;
 
-    public CreateCommand(GiveawayBot bot, EventWaiter waiter) {
+    public CreateCommand(Bot bot, EventWaiter waiter) {
         this.bot = bot;
         this.waiter = waiter;
         name = "create";
         help = "creates a giveaway (interactive setup)";
-        category = GiveawayBot.GIVEAWAY;
+        category = Constants.GIVEAWAY;
         guildOnly = true;
         //botPermissions = new Permission[]{Permission.MESSAGE_HISTORY,Permission.MESSAGE_ADD_REACTION,Permission.MESSAGE_EMBED_LINKS};
     }
@@ -77,8 +76,8 @@ public class CreateCommand extends Command {
                             waitForChannel(event);
                         } else {
                             TextChannel tchan = list.get(0);
-                            if (!event.getSelfMember().hasPermission(tchan, Permission.MESSAGE_READ, Permission.MESSAGE_WRITE, Permission.MESSAGE_EMBED_LINKS)) {
-                                event.replyWarning("Erm, I can't read, write, or embed links in " + tchan.getAsMention() + ". Please fix this and then try again." + CANCEL);
+                            if (!Constants.canSendGiveaway(tchan)) {
+                                event.replyWarning("Erm, I need the following permissions to start a giveaway in " + tchan.getAsMention() + ":\n" + Constants.PERMS + "\nPlease fix this and then try again." + CANCEL);
                             } else {
                                 event.replySuccess("Sweet! The giveaway will be in " + tchan.getAsMention() + "! Next, how long should the giveaway last?" + TIME);
                                 waitForTime(event, tchan);
@@ -156,24 +155,16 @@ public class CreateCommand extends Command {
                         event.replyWarning("Alright, I guess we're not having a giveaway after all..." + CANCEL);
                     } else {
                         String prize = e.getMessage().getRawContent();
-                        if (prize.length() > 500) {
+                        if (prize.length() > 250) {
                             event.replyWarning("Ack! That prize is too long. Can you shorten it a bit?" + PRIZE);
                             waitForPrize(event, tchan, seconds, winners);
                         } else {
-                            try {
-                                tchan.sendMessage(GiveawayBot.YAY + "   **GIVEAWAY**   " + GiveawayBot.YAY).queue(m -> {
-                                            try {
-                                                m.addReaction(GiveawayBot.TADA).queue();
-                                            } catch (Exception ignored) {
-                                            }
-                                            event.replySuccess("Done! The giveaway for the `" + e.getMessage().getRawContent() + "` is starting in " + tchan.getAsMention() + "!");
-                                            new Giveaway(bot, OffsetDateTime.now().plusSeconds(seconds), m, prize, winners).start();
-                                        },
-                                        v -> event.replyError("Uh oh. Something went wrong and I wasn't able to start the giveaway." + CANCEL));
-                            } catch (Exception ex) {
+                            Instant now = Instant.now();
+                            if (bot.startGiveaway(tchan, now, seconds, winners, prize)) {
+                                event.replySuccess("Done! The giveaway for the `" + e.getMessage().getRawContent() + "` is starting in " + tchan.getAsMention() + "!");
+                            } else {
                                 event.replyError("Uh oh. Something went wrong and I wasn't able to start the giveaway." + CANCEL);
                             }
-
                         }
                     }
                 },
